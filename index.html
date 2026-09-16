@@ -3,11 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Casa de Mamá — Control de Obra</title>
+<title>Casa de Mamá — Dashboard de Gastos</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   :root{
     --concrete:#eae7e0;
-    --concrete-dark:#d9d5cb;
     --paper:#fbfaf7;
     --ink:#2a2825;
     --ink-soft:#6b665e;
@@ -19,308 +20,484 @@
     --alert:#c07a1f;
     --alert-bg:#f4e7d2;
     --blue:#3b5a7a;
+    --blue-bg:#e8f0f7;
   }
   *{box-sizing:border-box;}
-  body{margin:0;padding:0;background:#f5f3f0;color:var(--ink);font-family:'Segoe UI', sans-serif;}
-  .wrap{max-width:1200px;margin:0 auto;padding:28px 20px 60px;}
-  
-  .head{background:var(--ink);color:var(--paper);padding:22px 26px;border-radius:2px;position:relative;overflow:hidden;margin-bottom:18px;}
-  .head .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--rust);opacity:.95;}
-  .head h1{font-weight:700;letter-spacing:.02em;text-transform:uppercase;font-size:26px;margin:4px 0 2px;}
+  body{margin:0;padding:0;background:#f5f3f0;color:var(--ink);font-family:'Segoe UI',sans-serif;}
+  .wrap{max-width:1200px;margin:0 auto;padding:20px 16px 60px;}
+
+  .head{background:var(--ink);color:var(--paper);padding:22px 26px;border-radius:3px;margin-bottom:18px;}
+  .head .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--rust);}
+  .head h1{font-weight:700;letter-spacing:.02em;text-transform:uppercase;font-size:24px;margin:4px 0 2px;}
   .head .sub{font-size:13px;color:#c9c5bc;}
-  
-  .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:20px;}
-  .summary-card{background:var(--paper);border-left:4px solid var(--rust);padding:16px;border-radius:2px;}
+
+  .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:14px;}
+  .summary-card{background:var(--paper);border-left:4px solid var(--rust);padding:14px 16px;border-radius:3px;}
   .summary-card.paid{border-left-color:var(--safe-green);}
   .summary-card.pending{border-left-color:var(--alert);}
-  .summary-card.optional{border-left-color:var(--blue);}
-  .summary-card .lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px;}
-  .summary-card .val{font-size:24px;font-weight:700;color:var(--rust);}
+  .summary-card .lbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px;}
+  .summary-card .val{font-size:22px;font-weight:700;color:var(--rust);}
   .summary-card.paid .val{color:var(--safe-green);}
   .summary-card.pending .val{color:var(--alert);}
-  .summary-card.optional .val{color:var(--blue);}
-  
-  .panel{background:var(--paper);border:1px solid var(--line);padding:20px;margin-bottom:20px;border-radius:2px;}
-  .panel h2{font-size:14px;letter-spacing:.08em;text-transform:uppercase;margin:0 0 16px;color:var(--rust-dark);display:flex;align-items:center;gap:8px;}
-  
-  table.detail-table{width:100%;border-collapse:collapse;font-size:13px;}
-  table.detail-table th{background:var(--ink);color:var(--paper);padding:10px 12px;text-align:left;font-weight:600;text-transform:uppercase;font-size:11px;}
-  table.detail-table td{padding:10px 12px;border-bottom:1px solid var(--line);}
-  table.detail-table tr.paid td{background:#fafbf9;}
-  table.detail-table tr.pending td{background:#fff9f5;}
-  table.detail-table tr.optional td{background:#f5f8fb;}
-  table.detail-table tr:hover td{background:rgba(181,80,45,0.04);}
-  table.detail-table td:last-child{text-align:right;}
-  
-  .badge{display:inline-block;padding:3px 8px;font-size:10px;border-radius:3px;font-weight:600;}
-  .badge.success{background:var(--safe-green-bg);color:var(--safe-green);}
-  .badge.warning{background:var(--alert-bg);color:var(--alert);}
-  .badge.info{background:#e8f0f7;color:var(--blue);}
-  
-  .footer-note{margin-top:20px;font-size:11px;color:var(--ink-soft);text-align:center;line-height:1.6;padding-top:20px;border-top:1px solid var(--line);}
-  
-  @media (max-width:768px){
+  .summary-card input{width:100%;border:none;background:transparent;font-size:20px;font-weight:700;color:var(--rust);padding:0;font-family:inherit;}
+  .summary-card input:focus{outline:none;border-bottom:2px solid var(--rust);}
+
+  .progress-wrap{background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:14px 16px;margin-bottom:20px;font-size:12px;color:var(--ink-soft);}
+  .progress-bar-bg{background:var(--concrete);border-radius:20px;height:10px;margin-top:8px;overflow:hidden;}
+  .progress-bar-fill{background:var(--rust);height:100%;border-radius:20px;transition:width .3s;}
+
+  .panel{background:var(--paper);border:1px solid var(--line);padding:20px;margin-bottom:20px;border-radius:3px;}
+  .panel h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;margin:0 0 16px;color:var(--rust-dark);display:flex;align-items:center;gap:8px;}
+  .panel h2::before{content:"";width:9px;height:9px;background:var(--rust);display:inline-block;}
+
+  .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px;}
+  .chart-box{position:relative;height:230px;}
+  .chart-box.wide{height:260px;}
+  .chart-full{grid-column:1 / -1;}
+  .chart-empty{text-align:center;color:#aaa;font-size:12px;padding-top:80px;}
+
+  .form-group{margin-bottom:15px;}
+  .form-group label{display:block;font-size:11px;color:#666;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;}
+  .form-group input, .form-group select{
+    width:100%;padding:10px;border:1px solid var(--line);border-radius:3px;font-size:13px;font-family:inherit;background:var(--paper);
+  }
+  .form-group input:focus, .form-group select:focus{outline:2px solid var(--rust);outline-offset:0;background:white;}
+  .form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;margin-bottom:15px;}
+
+  .estado-buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .estado-btn{padding:11px 4px;border:2px solid var(--line);background:white;border-radius:3px;cursor:pointer;font-weight:600;text-transform:uppercase;font-size:11px;text-align:center;}
+  .estado-btn:hover{border-color:var(--rust);}
+  .estado-btn.active[data-estado="Pagado"]{background:var(--safe-green-bg);border-color:var(--safe-green);color:var(--safe-green);}
+  .estado-btn.active[data-estado="Pendiente"]{background:var(--alert-bg);border-color:var(--alert);color:var(--alert);}
+  .estado-btn.active[data-estado="Opcional"]{background:var(--blue-bg);border-color:var(--blue);color:var(--blue);}
+
+  .btn{padding:12px 20px;border:none;border-radius:3px;cursor:pointer;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.05em;}
+  .btn-primary{background:var(--rust);color:white;width:100%;}
+  .btn-primary:hover{background:var(--rust-dark);}
+  .btn-info{background:var(--blue);color:white;margin-top:15px;}
+  .btn-info:hover{background:#2a3f52;}
+
+  .filters{display:grid;grid-template-columns:auto auto 1fr;gap:12px;align-items:center;margin-bottom:15px;}
+  .filters select{padding:8px 12px;border:1px solid var(--line);border-radius:3px;font-size:13px;}
+  .filter-count{text-align:right;font-size:12px;color:#999;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{background:var(--ink);color:white;padding:10px;text-align:left;font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.05em;}
+  td{padding:10px;border-bottom:1px solid var(--line);}
+  tr:hover td{background:rgba(181,80,45,0.04);}
+  tr.paid td{background:#fafbf9;}
+  tr.pending td{background:#fff9f5;}
+  tr.opcional td{background:#f5f8fb;}
+
+  .badge{display:inline-block;padding:3px 9px;border-radius:3px;font-size:10px;font-weight:600;text-transform:uppercase;}
+  .badge.paid{background:var(--safe-green-bg);color:var(--safe-green);}
+  .badge.pending{background:var(--alert-bg);color:var(--alert);}
+  .badge.opcional{background:var(--blue-bg);color:var(--blue);}
+
+  .monto-cell{text-align:right;font-weight:600;font-family:monospace;}
+  .del-cell{text-align:center;}
+  .del-btn{background:none;border:none;cursor:pointer;font-size:14px;opacity:.5;}
+  .del-btn:hover{opacity:1;}
+
+  .empty{text-align:center;padding:30px;color:#999;}
+
+  .factura-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:1000;overflow:auto;}
+  .factura-modal.active{display:block;}
+  .modal-content{background:white;margin:20px auto;padding:40px;max-width:900px;border-radius:4px;min-height:500px;}
+  .modal-header{display:flex;justify-content:space-between;margin-bottom:20px;border-bottom:2px solid var(--rust);padding-bottom:15px;}
+  .modal-header h2{margin:0;color:var(--rust-dark);}
+  .modal-close{background:none;border:none;font-size:24px;cursor:pointer;}
+  .factura-table{width:100%;border-collapse:collapse;margin:20px 0;}
+  .factura-table th{background:var(--rust);color:white;padding:10px;}
+  .factura-table td{padding:10px;border-bottom:1px solid var(--line);}
+  .factura-table .total{background:var(--rust);color:white;font-weight:700;}
+  .factura-table .monto{text-align:right;font-weight:600;font-family:monospace;}
+  .factura-footer{margin-top:30px;padding-top:20px;border-top:2px solid var(--rust);text-align:center;font-size:11px;}
+  .modal-buttons{margin-top:30px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+  .modal-buttons .btn{width:auto;margin:0;}
+
+  .footer-note{margin-top:10px;font-size:11px;color:var(--ink-soft);text-align:center;line-height:1.6;padding-top:16px;border-top:1px solid var(--line);}
+
+  @media(max-width:768px){
+    .form-row{grid-template-columns:1fr;}
+    .filters{grid-template-columns:1fr;}
+    .charts-grid{grid-template-columns:1fr;}
     .summary{grid-template-columns:repeat(2,1fr);}
-    table.detail-table{font-size:12px;}
   }
 </style>
 </head>
 <body>
+
 <div class="wrap">
   <div class="head">
-    <div class="eyebrow">Control de obra actualizado — 11 de septiembre de 2026</div>
-    <h1>Casa de Mamá — Resumen de Gastos</h1>
-    <div class="sub">Santiago del Estero · Desglose completo de mano de obra, materiales y trabajos extras</div>
+    <div class="eyebrow">Control de obra · tablero editable</div>
+    <h1>Casa de Mamá — Dashboard de Gastos</h1>
+    <div class="sub">Santiago del Estero · cargá un gasto y todo se recalcula solo</div>
   </div>
 
   <div class="summary">
+    <div class="summary-card">
+      <div class="lbl">Presupuesto Total (editable)</div>
+      <input type="number" id="presupuestoInput" value="8000000" onchange="guardarPresupuesto()">
+    </div>
     <div class="summary-card paid">
-      <div class="lbl">Total Pagado</div>
-      <div class="val">$6.421.000</div>
+      <div class="lbl">Gastado (Pagado)</div>
+      <div class="val" id="totalPagado">$0</div>
     </div>
     <div class="summary-card pending">
-      <div class="lbl">Pendiente de Pago</div>
-      <div class="val">$707.000</div>
-    </div>
-    <div class="summary-card optional">
-      <div class="lbl">Opcional (Ventana)</div>
-      <div class="val">$590.000</div>
+      <div class="lbl">Pendiente de Pagar</div>
+      <div class="val" id="totalPendiente">$0</div>
     </div>
     <div class="summary-card">
-      <div class="lbl">Presupuesto Disponible</div>
-      <div class="val">$8.000.000</div>
+      <div class="lbl">Saldo Disponible</div>
+      <div class="val" id="saldoDisponible">$0</div>
+    </div>
+  </div>
+
+  <div class="progress-wrap">
+    <div style="display:flex;justify-content:space-between;">
+      <span>% EJECUTADO DEL PRESUPUESTO (sobre lo pagado)</span>
+      <strong id="pctLabel">0.0%</strong>
+    </div>
+    <div class="progress-bar-bg"><div class="progress-bar-fill" id="pctBar" style="width:0%"></div></div>
+  </div>
+
+  <div class="panel">
+    <h2>Gráficos</h2>
+    <div class="charts-grid">
+      <div>
+        <div style="font-size:12px;color:var(--ink-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;">Distribución del gasto por categoría</div>
+        <div class="chart-box"><canvas id="chartCategoria"></canvas></div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--ink-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;">Costo por ambiente</div>
+        <div class="chart-box"><canvas id="chartAmbiente"></canvas></div>
+      </div>
+      <div class="chart-full">
+        <div style="font-size:12px;color:var(--ink-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;">Flujo mensual de egresos (pagado)</div>
+        <div class="chart-box wide"><canvas id="chartFlujo"></canvas></div>
+      </div>
     </div>
   </div>
 
   <div class="panel">
-    <h2>Desglose Detallado de Gastos</h2>
-    <table class="detail-table">
-      <thead>
-        <tr>
-          <th>Concepto</th>
-          <th>Monto</th>
-          <th>Estado</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr class="paid">
-          <td><strong>MANO DE OBRA - TRABAJOS BASE</strong></td>
-          <td></td>
-          <td></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Pago semanal Etapa 1 (picado + revoque grueso)</td>
-          <td>$300.000</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Pago semanal Etapa 2 (piso contrapiso + revoque fino)</td>
-          <td>$300.000</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Revoque de paredes pieza</td>
-          <td>$350.000</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Terminación de piso + revoque de paredes</td>
-          <td>$350.000</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Trabajo general (Pieza 1)</td>
-          <td>$350.000</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Pago Antonio (general)</td>
-          <td>$700.000</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td><strong>Subtotal Mano de Obra Base</strong></td>
-          <td><strong>$2.700.000</strong></td>
-          <td><span class="badge success">✓ PAGADO</span></td>
-        </tr>
-        
-        <tr class="paid">
-          <td><strong>MANO DE OBRA - TRABAJOS EXTRAS</strong></td>
-          <td></td>
-          <td></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Zócalo y cielo raso (ventilación)</td>
-          <td>$300.000</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Colocación de cerámica en baño</td>
-          <td>$180.000</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Revocar parte exterior (picar + revocar)</td>
-          <td>$400.000</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Baño (picar + revocar todo)</td>
-          <td>$600.000</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Otros trabajos</td>
-          <td>$160.000</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td><strong>Subtotal Trabajos Extras</strong></td>
-          <td><strong>$1.640.000</strong></td>
-          <td><span class="badge success">✓ PAGADO</span></td>
-        </tr>
-        
-        <tr class="paid">
-          <td><strong>MATERIALES - PAGADOS</strong></td>
-          <td></td>
-          <td></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Compra general de materiales (1)</td>
-          <td>$112.300</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Compra general de materiales (2)</td>
-          <td>$600.700</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Cal hidratada</td>
-          <td>$85.000</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Electricista (tablero nuevo PIA)</td>
-          <td>$23.000</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Electricista (PIA)</td>
-          <td>$56.000</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Reparación caño desagüe inodoro (50% saldado)</td>
-          <td>$200.000</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Electricidad</td>
-          <td>$127.000</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Corralón (Hernán corralón)</td>
-          <td>$607.000</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Antioxidantes</td>
-          <td>$20.000</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td>&nbsp;&nbsp;Grifería de lavado</td>
-          <td>$150.000</td>
-          <td><span class="badge success">✓ Pagado</span></td>
-        </tr>
-        <tr class="paid">
-          <td><strong>Subtotal Materiales Pagados</strong></td>
-          <td><strong>$2.081.000</strong></td>
-          <td><span class="badge success">✓ PAGADO</span></td>
-        </tr>
-        
-        <tr class="pending">
-          <td><strong>PENDIENTE DE PAGO</strong></td>
-          <td></td>
-          <td></td>
-        </tr>
-        <tr class="pending">
-          <td>&nbsp;&nbsp;Nicho cerámica en baño (material + colocación + picar pared)</td>
-          <td>$100.000</td>
-          <td><span class="badge warning">⏳ Pendiente</span></td>
-        </tr>
-        <tr class="pending">
-          <td>&nbsp;&nbsp;Corralón (a pagar después - confirmar)</td>
-          <td>$607.000</td>
-          <td><span class="badge warning">⏳ Pendiente</span></td>
-        </tr>
-        <tr class="pending">
-          <td><strong>Subtotal Pendiente</strong></td>
-          <td><strong>$707.000</strong></td>
-          <td><span class="badge warning">⏳ PENDIENTE</span></td>
-        </tr>
-        
-        <tr class="optional">
-          <td><strong>OPCIONALES - A EVALUAR</strong></td>
-          <td></td>
-          <td></td>
-        </tr>
-        <tr class="optional">
-          <td>&nbsp;&nbsp;Cambio de ventana (mano de obra - Antonio)</td>
-          <td>$400.000</td>
-          <td><span class="badge info">❓ Ver si hacemos</span></td>
-        </tr>
-        <tr class="optional">
-          <td>&nbsp;&nbsp;Ventana (compra del material)</td>
-          <td>$190.000</td>
-          <td><span class="badge info">❓ Ver si hacemos</span></td>
-        </tr>
-        <tr class="optional">
-          <td><strong>Subtotal Opcionales</strong></td>
-          <td><strong>$590.000</strong></td>
-          <td><span class="badge info">❓ OPCIONALES</span></td>
-        </tr>
-      </tbody>
-    </table>
+    <h2>Agregar Gasto</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Fecha</label>
+        <input type="date" id="fFecha">
+      </div>
+      <div class="form-group">
+        <label>Categoría</label>
+        <select id="fCategoria">
+          <option value="Mano de Obra">Mano de Obra</option>
+          <option value="Materiales">Materiales</option>
+          <option value="Trabajos Extras">Trabajos Extras</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Ambiente</label>
+        <select id="fAmbiente">
+          <option value="General">General</option>
+          <option value="Pieza 1">Pieza 1</option>
+          <option value="Baño">Baño</option>
+          <option value="Lavadero">Lavadero</option>
+          <option value="Exterior">Exterior</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Concepto</label>
+      <input type="text" id="fConcepto" placeholder="Ej: Compra de cemento, pago semanal, anticipo plomero...">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Monto ($)</label>
+        <input type="number" id="fMonto" placeholder="0" min="0">
+      </div>
+      <div class="form-group">
+        <label>Estado</label>
+        <div class="estado-buttons">
+          <button class="estado-btn active" data-estado="Pagado" onclick="seleccionarEstado('Pagado')">Pagado</button>
+          <button class="estado-btn" data-estado="Pendiente" onclick="seleccionarEstado('Pendiente')">Pendiente</button>
+          <button class="estado-btn" data-estado="Opcional" onclick="seleccionarEstado('Opcional')">Opcional</button>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="agregarGasto()">+ Agregar A La Lista</button>
   </div>
 
   <div class="panel">
-    <h2>Resumen Final</h2>
-    <table class="detail-table">
-      <tbody>
-        <tr class="paid">
-          <td><strong>Total Gastado (Pagado)</strong></td>
-          <td></td>
-          <td><strong>$6.421.000</strong></td>
-        </tr>
-        <tr class="pending">
-          <td><strong>Total Pendiente de Pago</strong></td>
-          <td></td>
-          <td><strong>$707.000</strong></td>
-        </tr>
-        <tr>
-          <td><strong>TOTAL REAL (Pagado + Pendiente)</strong></td>
-          <td></td>
-          <td><strong>$7.128.000</strong></td>
-        </tr>
-        <tr class="optional">
-          <td>Opcional (Ventana - si se hace)</td>
-          <td></td>
-          <td>$590.000</td>
-        </tr>
-        <tr>
-          <td><strong>TOTAL CON OPCIONALES</strong></td>
-          <td></td>
-          <td><strong>$7.718.000</strong></td>
-        </tr>
-        <tr>
-          <td>Presupuesto Disponible</td>
-          <td></td>
-          <td>$8.000.000</td>
-        </tr>
-        <tr class="paid">
-          <td><strong>Saldo Disponible (sin opcionales)</strong></td>
-          <td></td>
-          <td><strong>$872.000</strong></td>
+    <h2>Gastos Registrados</h2>
+    <div class="filters">
+      <select id="filtCategoria" onchange="renderizar()">
+        <option value="">Todas las categorías</option>
+        <option value="Mano de Obra">Mano de Obra</option>
+        <option value="Materiales">Materiales</option>
+        <option value="Trabajos Extras">Trabajos Extras</option>
+      </select>
+      <select id="filtEstado" onchange="renderizar()">
+        <option value="">Todos los estados</option>
+        <option value="Pagado">Pagado</option>
+        <option value="Pendiente">Pendiente</option>
+        <option value="Opcional">Opcional</option>
+      </select>
+      <div class="filter-count"><span id="rowCount">0 registros</span></div>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr><th>Fecha</th><th>Categoría</th><th>Concepto</th><th>Ambiente</th><th>Monto</th><th>Estado</th><th></th></tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:15px;padding:14px;background:white;border:2px solid var(--rust);border-radius:3px;font-size:14px;font-weight:700;color:var(--rust-dark);">
+      TOTAL DEL FILTRO ACTUAL: <span id="totalFiltro">$0</span>
+    </div>
+
+    <button class="btn btn-info" id="btnFactura" onclick="abrirFactura()" style="display:none;">📄 Generar Factura PDF (de este filtro)</button>
+  </div>
+
+  <div class="footer-note">
+    ⚠ Versión local: guarda solo en este navegador de este dispositivo, no sincroniza con la PC ni con otros celulares · abrilo siempre desde Safari, nunca desde la vista de archivos.
+  </div>
+</div>
+
+<div class="factura-modal" id="facturaModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="facturaTitle">Factura de Pagos</h2>
+      <button class="modal-close" onclick="cerrarFactura()">✕</button>
+    </div>
+    <p style="font-size:12px;color:#666;margin-bottom:15px;">
+      <strong>Fecha:</strong> <span id="facturaFecha"></span><br>
+      <strong>Obra:</strong> Casa de Mamá - Santiago del Estero<br>
+      <strong>Responsable:</strong> Antonio<br>
+      <strong>Moneda:</strong> Pesos Argentinos (ARS)
+    </p>
+    <table class="factura-table">
+      <thead><tr><th>Concepto</th><th class="monto">Importe (ARS)</th></tr></thead>
+      <tbody id="facturaBody"></tbody>
+      <tfoot><tr class="total"><td><strong>TOTAL</strong></td><td class="monto"><strong id="facturaTotalVal">$0</strong></td></tr></tfoot>
+    </table>
+    <div class="factura-footer">
+      <p style="margin-top:20px;">________________________</p>
+      <p>Firma / Conformidad</p>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn btn-primary" onclick="imprimirFactura()" style="width:auto;">🖨️ Imprimir</button>
+      <button class="btn btn-primary" onclick="descargarFacturaPDF()" style="width:auto;">📥 Descargar PDF</button>
+      <button class="btn btn-primary" onclick="cerrarFactura()" style="width:auto;">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let gastos = [];
+let presupuesto = 8000000;
+let estadoActual = 'Pagado';
+let chartCategoria, chartAmbiente, chartFlujo;
+
+const COLORS = { rust:'#b5502d', green:'#3f6b4b', alert:'#c07a1f', blue:'#3b5a7a', dark:'#2a2825', soft:'#cfc9bd' };
+
+function fmt(n){ return '$' + Math.round(n).toLocaleString('es-AR'); }
+
+function datosDefecto(){
+  return [
+    {fecha:'2026-07-25',categoria:'Mano de Obra',ambiente:'Pieza 1',concepto:'Pago semanal Etapa 1 (picado + revoque grueso)',monto:300000,estado:'Pagado'},
+    {fecha:'2026-07-28',categoria:'Mano de Obra',ambiente:'Pieza 1',concepto:'Pago semanal Etapa 2 (piso contrapiso + revoque fino)',monto:300000,estado:'Pagado'},
+    {fecha:'2026-08-08',categoria:'Mano de Obra',ambiente:'Pieza 1',concepto:'Revoque de paredes pieza',monto:350000,estado:'Pagado'},
+    {fecha:'2026-08-12',categoria:'Mano de Obra',ambiente:'Pieza 1',concepto:'Terminación de piso + revoque de paredes',monto:350000,estado:'Pagado'},
+    {fecha:'2026-08-22',categoria:'Mano de Obra',ambiente:'Pieza 1',concepto:'Trabajo general',monto:350000,estado:'Pagado'},
+    {fecha:'2026-08-27',categoria:'Mano de Obra',ambiente:'General',concepto:'Pago Antonio',monto:350000,estado:'Pagado'},
+    {fecha:'2026-09-04',categoria:'Mano de Obra',ambiente:'General',concepto:'Pago Antonio',monto:350000,estado:'Pagado'},
+    {fecha:'2026-09-11',categoria:'Mano de Obra',ambiente:'General',concepto:'Pago Antonio',monto:350000,estado:'Pagado'},
+    {fecha:'2026-08-30',categoria:'Trabajos Extras',ambiente:'Exterior',concepto:'Zócalo y cielo raso (ventilación)',monto:300000,estado:'Pagado'},
+    {fecha:'2026-09-01',categoria:'Trabajos Extras',ambiente:'Baño',concepto:'Colocación de cerámica en baño',monto:180000,estado:'Pagado'},
+    {fecha:'2026-09-03',categoria:'Trabajos Extras',ambiente:'Exterior',concepto:'Revocar parte exterior (picar + revocar)',monto:400000,estado:'Pagado'},
+    {fecha:'2026-09-05',categoria:'Trabajos Extras',ambiente:'Baño',concepto:'Baño (picar + revocar todo)',monto:600000,estado:'Pagado'},
+    {fecha:'2026-09-06',categoria:'Trabajos Extras',ambiente:'General',concepto:'Otros trabajos',monto:160000,estado:'Pagado'},
+    {fecha:'2026-07-01',categoria:'Materiales',ambiente:'General',concepto:'Compra general de materiales (1)',monto:112300,estado:'Pagado'},
+    {fecha:'2026-07-01',categoria:'Materiales',ambiente:'General',concepto:'Compra general de materiales (2)',monto:600700,estado:'Pagado'},
+    {fecha:'2026-07-02',categoria:'Materiales',ambiente:'General',concepto:'Cal hidratada',monto:85000,estado:'Pagado'},
+    {fecha:'2026-07-28',categoria:'Materiales',ambiente:'Pieza 1',concepto:'Electricista (tablero nuevo PIA)',monto:23000,estado:'Pagado'},
+    {fecha:'2026-07-28',categoria:'Materiales',ambiente:'Pieza 1',concepto:'Electricista (PIA)',monto:56000,estado:'Pagado'},
+    {fecha:'2026-08-09',categoria:'Materiales',ambiente:'Pieza 1',concepto:'Cerámico (1° cuota)',monto:350000,estado:'Pagado'},
+    {fecha:'2026-08-23',categoria:'Materiales',ambiente:'Baño',concepto:'Reparación caño desagüe inodoro (50%)',monto:200000,estado:'Pagado'},
+    {fecha:'2026-09-04',categoria:'Materiales',ambiente:'General',concepto:'Electricidad',monto:127000,estado:'Pagado'},
+    {fecha:'2026-09-09',categoria:'Materiales',ambiente:'General',concepto:'Corralón (Hernán corralón)',monto:607000,estado:'Pagado'},
+    {fecha:'2026-09-09',categoria:'Materiales',ambiente:'General',concepto:'Antioxidantes',monto:20000,estado:'Pagado'},
+    {fecha:'2026-09-09',categoria:'Materiales',ambiente:'Pieza 1',concepto:'Cerámico (2° cuota)',monto:350000,estado:'Pagado'},
+    {fecha:'2026-09-11',categoria:'Materiales',ambiente:'Lavadero',concepto:'Grifería de lavado',monto:150000,estado:'Pagado'},
+    {fecha:'2026-09-11',categoria:'Materiales',ambiente:'Baño',concepto:'Caño de inodoro (50% restante)',monto:200000,estado:'Pagado'},
+    {fecha:'2026-09-11',categoria:'Materiales',ambiente:'General',concepto:'Termo tanque (1° cuota)',monto:100000,estado:'Pagado'},
+    {fecha:'2026-09-11',categoria:'Materiales',ambiente:'General',concepto:'Termo tanque (2° cuota)',monto:100000,estado:'Pagado'},
+    {fecha:'2026-09-11',categoria:'Materiales',ambiente:'General',concepto:'Termo tanque (3° cuota)',monto:100000,estado:'Pagado'},
+    {fecha:'2026-09-11',categoria:'Trabajos Extras',ambiente:'Baño',concepto:'Nicho cerámica en baño (material + colocación + picar pared)',monto:100000,estado:'Pendiente'},
+    {fecha:'2026-09-11',categoria:'Materiales',ambiente:'General',concepto:'Corralón (a pagar después - confirmar)',monto:607000,estado:'Pendiente'},
+    {fecha:'2026-09-11',categoria:'Mano de Obra',ambiente:'General',concepto:'Cambio de ventana (mano de obra - Antonio)',monto:400000,estado:'Opcional'},
+    {fecha:'2026-09-11',categoria:'Materiales',ambiente:'General',concepto:'Ventana (compra del material)',monto:190000,estado:'Opcional'},
+  ].map((g,i)=>({id:Date.now()+i, ...g}));
+}
+
+function cargarTodo(){
+  const savedGastos = localStorage.getItem('obraGastos');
+  const savedPresu = localStorage.getItem('obraPresupuesto');
+  gastos = savedGastos ? JSON.parse(savedGastos) : datosDefecto();
+  presupuesto = savedPresu ? parseFloat(savedPresu) : 8000000;
+  document.getElementById('presupuestoInput').value = presupuesto;
+  document.getElementById('fFecha').valueAsDate = new Date();
+  if(!savedGastos) guardarGastos();
+  renderizar();
+}
+
+function guardarGastos(){ localStorage.setItem('obraGastos', JSON.stringify(gastos)); }
+function guardarPresupuesto(){
+  presupuesto = parseFloat(document.getElementById('presupuestoInput').value) || 0;
+  localStorage.setItem('obraPresupuesto', presupuesto);
+  renderizar();
+}
+
+function seleccionarEstado(estado){
+  estadoActual = estado;
+  document.querySelectorAll('.estado-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`.estado-btn[data-estado="${estado}"]`).classList.add('active');
+}
+
+function agregarGasto(){
+  const fecha = document.getElementById('fFecha').value;
+  const categoria = document.getElementById('fCategoria').value;
+  const ambiente = document.getElementById('fAmbiente').value;
+  const concepto = document.getElementById('fConcepto').value.trim();
+  const monto = parseFloat(document.getElementById('fMonto').value);
+  if(!fecha || !concepto || !monto || monto<=0){ alert('Completa todos los campos'); return; }
+  gastos.push({id:Date.now(),fecha,categoria,ambiente,concepto,monto,estado:estadoActual});
+  guardarGastos();
+  document.getElementById('fConcepto').value='';
+  document.getElementById('fMonto').value='';
+  document.getElementById('fFecha').valueAsDate = new Date();
+  renderizar();
+}
+
+function borrarGasto(id){
+  if(!confirm('¿Eliminar este gasto?')) return;
+  gastos = gastos.filter(g => g.id !== id);
+  guardarGastos();
+  renderizar();
+}
+
+function renderizar(){
+  const filtCat = document.getElementById('filtCategoria').value;
+  const filtEst = document.getElementById('filtEstado').value;
+  const visibles = gastos.filter(g => (!filtCat||g.categoria===filtCat) && (!filtEst||g.estado===filtEst));
+
+  const pagado = gastos.filter(g=>g.estado==='Pagado').reduce((a,g)=>a+g.monto,0);
+  const pendiente = gastos.filter(g=>g.estado==='Pendiente').reduce((a,g)=>a+g.monto,0);
+  const saldo = presupuesto - pagado - pendiente;
+  const pct = presupuesto>0 ? (pagado/presupuesto*100) : 0;
+
+  document.getElementById('totalPagado').textContent = fmt(pagado);
+  document.getElementById('totalPendiente').textContent = fmt(pendiente);
+  document.getElementById('saldoDisponible').textContent = fmt(saldo);
+  document.getElementById('pctLabel').textContent = pct.toFixed(1)+'%';
+  document.getElementById('pctBar').style.width = Math.min(pct,100)+'%';
+
+  const totalFiltro = visibles.reduce((a,g)=>a+g.monto,0);
+  document.getElementById('totalFiltro').textContent = fmt(totalFiltro);
+  document.getElementById('btnFactura').style.display = visibles.length>0 ? 'inline-block':'none';
+
+  const tbody = document.getElementById('tbody');
+  if(visibles.length===0){
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">No hay gastos cargados con este filtro todavía.</td></tr>';
+  } else {
+    tbody.innerHTML = visibles.slice().sort((a,b)=>new Date(b.fecha)-new Date(a.fecha)).map(g=>`
+      <tr class="${g.estado.toLowerCase()}">
+        <td>${g.fecha}</td><td>${g.categoria}</td><td>${g.concepto}</td><td>${g.ambiente}</td>
+        <td class="monto-cell">${fmt(g.monto)}</td>
+        <td><span class="badge ${g.estado.toLowerCase()}">${g.estado}</span></td>
+        <td class="del-cell"><button class="del-btn" onclick="borrarGasto(${g.id})">🗑️</button></td>
+      </tr>`).join('');
+  }
+  document.getElementById('rowCount').textContent = visibles.length + ' registro' + (visibles.length===1?'':'s');
+
+  renderGraficos();
+}
+
+function renderGraficos(){
+  const pagados = gastos.filter(g=>g.estado==='Pagado');
+
+  // Por categoría
+  const catMap = {};
+  pagados.forEach(g=>{ catMap[g.categoria]=(catMap[g.categoria]||0)+g.monto; });
+  const catLabels = Object.keys(catMap);
+  const catData = Object.values(catMap);
+
+  if(chartCategoria) chartCategoria.destroy();
+  chartCategoria = new Chart(document.getElementById('chartCategoria'), {
+    type:'doughnut',
+    data:{ labels: catLabels, datasets:[{ data: catData, backgroundColor:[COLORS.rust, COLORS.blue, COLORS.green, COLORS.alert] }]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom', labels:{boxWidth:12,font:{size:11}}}} }
+  });
+
+  // Por ambiente
+  const ambMap = {};
+  pagados.forEach(g=>{ ambMap[g.ambiente]=(ambMap[g.ambiente]||0)+g.monto; });
+  const ambLabels = Object.keys(ambMap);
+  const ambData = Object.values(ambMap);
+
+  if(chartAmbiente) chartAmbiente.destroy();
+  chartAmbiente = new Chart(document.getElementById('chartAmbiente'), {
+    type:'bar',
+    data:{ labels: ambLabels, datasets:[{ label:'Gastado', data: ambData, backgroundColor: COLORS.rust }]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, ticks:{font:{size:10}}}, x:{ticks:{font:{size:10}}}} }
+  });
+
+  // Flujo mensual
+  const mesMap = {};
+  pagados.forEach(g=>{
+    const mes = g.fecha.slice(0,7);
+    mesMap[mes] = (mesMap[mes]||0) + g.monto;
+  });
+  const mesesOrdenados = Object.keys(mesMap).sort();
+  const mesData = mesesOrdenados.map(m=>mesMap[m]);
+
+  if(chartFlujo) chartFlujo.destroy();
+  chartFlujo = new Chart(document.getElementById('chartFlujo'), {
+    type:'bar',
+    data:{ labels: mesesOrdenados, datasets:[{ label:'Egresos pagados', data: mesData, backgroundColor: COLORS.blue }]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, ticks:{font:{size:10}}}, x:{ticks:{font:{size:10}}}} }
+  });
+}
+
+function abrirFactura(){
+  const filtCat = document.getElementById('filtCategoria').value;
+  const filtEst = document.getElementById('filtEstado').value;
+  const visibles = gastos.filter(g => (!filtCat||g.categoria===filtCat) && (!filtEst||g.estado===filtEst));
+  const total = visibles.reduce((a,g)=>a+g.monto,0);
+
+  let titulo = 'REGISTRO DE PAGOS';
+  if(filtCat) titulo += ' - ' + filtCat.toUpperCase();
+  if(filtEst) titulo += ' (' + filtEst.toUpperCase() + ')';
+  document.getElementById('facturaTitle').textContent = titulo;
+  document.getElementById('facturaFecha').textContent = new Date().toLocaleDateString('es-AR');
+  document.getElementById('facturaBody').innerHTML = visibles.map(g=>`<tr><td>${g.concepto}</td><td class="monto">${fmt(g.monto)}</td></tr>`).join('');
+  document.getElementById('facturaTotalVal').textContent = fmt(total);
+  document.getElementById('facturaModal').classList.add('active');
+}
+
+function cerrarFactura(){ document.getElementById('facturaModal').classList.remove('active'); }
+function imprimirFactura(){ window.print(); }
+function descargarFacturaPDF(){
+  const element = document.querySelector('.modal-content');
+  const opt = {margin:10, filename:`factura-${new Date().toISOString().slice(0,10)}.pdf`, image:{type:'jpeg',quality:.98}, html2canvas:{scale:2}, jsPDF:{orientation:'portrait',unit:'mm',format:'a4'}};
+  html2pdf().set(opt).from(element).save();
+}
+
+cargarTodo();
+</script>
+
+</body>
+</html>
